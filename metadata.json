@@ -1,0 +1,6 @@
+{
+  "name": "Rosida - Motorista",
+  "description": "Aplicativo de gestão de ganhos, despesas, veículo e metas de trabalho para motoristas e entregadores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
