@@ -41,6 +41,7 @@ import {
   countWorkingDaysInMonth,
   calculateDateDiffDays,
   calculatePlatformFilteredData,
+  calculateEstimatedFuelExpense,
 } from '../utils/helpers';
 import { DateRangePicker } from './DateRangePicker';
 
@@ -286,6 +287,7 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
   const vehicleCostSummary = calculateDailyVehicleCost(profile);
   const fuelTelemetry = calculateFuelCycles(expenses, earnings, profile);
   const latestFuelCycle = fuelTelemetry.currentCycle;
+  const dayFuelEstimate = calculateEstimatedFuelExpense(totalKm, profile);
 
   if (periodFilter === 'week') {
     periodTarget = dailyTarget * workdaysSelectedCount;
@@ -901,6 +903,78 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
         </div>
       )}
 
+      {/* Contagem e Estimativa de Gasto de Combustível da Rodagem do Dia/Período */}
+      <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 border border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0 border border-amber-500/30">
+              <Fuel className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                  Gasto de Combustível dos KM Rodados ({range.label})
+                </span>
+                <span className="text-[11px] font-semibold text-zinc-300 bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">
+                  Veículo: {dayFuelEstimate.kmPerLiter} km/L • {formatCurrency(dayFuelEstimate.fuelPricePerLiter)}/L ({dayFuelEstimate.fuelType})
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Cálculo em tempo real baseado no rendimento configurado do seu veículo e nos {formatNumber(totalKm, 1)} km rodados.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-xs text-zinc-400 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 font-mono">
+              Custo/km: <strong className="text-amber-400">{formatCurrency(dayFuelEstimate.fuelCostPerKm)}/km</strong>
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-zinc-800/80">
+          <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-800/80">
+            <span className="text-[11px] text-zinc-400 block font-medium">Gasto de Combustível (KM)</span>
+            <span className="text-lg sm:text-xl font-black text-rose-400">
+              {formatCurrency(dayFuelEstimate.fuelCost)}
+            </span>
+            <span className="text-[10px] text-zinc-500 block mt-0.5">
+              estimado para a rodagem
+            </span>
+          </div>
+
+          <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-800/80">
+            <span className="text-[11px] text-zinc-400 block font-medium">Litros Consumidos</span>
+            <span className="text-lg sm:text-xl font-black text-amber-300">
+              {dayFuelEstimate.litersConsumed.toFixed(1)} L
+            </span>
+            <span className="text-[10px] text-zinc-500 block mt-0.5">
+              em {formatNumber(totalKm, 1)} km rodados
+            </span>
+          </div>
+
+          <div className="bg-zinc-950/70 p-3 rounded-xl border border-zinc-800/80">
+            <span className="text-[11px] text-zinc-400 block font-medium">Faturamento Bruto</span>
+            <span className="text-lg sm:text-xl font-black text-white">
+              {formatCurrency(totalGross)}
+            </span>
+            <span className="text-[10px] text-zinc-500 block mt-0.5">
+              {totalRides} {totalRides === 1 ? 'corrida' : 'corridas'} registradas
+            </span>
+          </div>
+
+          <div className="bg-zinc-950/70 p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/10">
+            <span className="text-[11px] text-emerald-400 block font-medium">Sobra Pós-Combustível</span>
+            <span className={`text-lg sm:text-xl font-black ${(totalGross - dayFuelEstimate.fuelCost) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {formatCurrency(totalGross - dayFuelEstimate.fuelCost)}
+            </span>
+            <span className="text-[10px] text-zinc-400 block mt-0.5">
+              {totalGross > 0 ? `${Math.round(((totalGross - dayFuelEstimate.fuelCost) / totalGross) * 100)}% de margem no bolso` : 'Bruto - combustível'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Main Section: Ganhos Registrados por Aplicativo */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-lg space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -973,6 +1047,8 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {activeAppSummary.map((app) => {
                     const appRatePerKm = app.km > 0 ? app.amount / app.km : 0;
+                    const appFuel = calculateEstimatedFuelExpense(app.km, profile);
+                    const appNetAfterFuel = app.amount - appFuel.fuelCost;
                     return (
                       <div
                         key={app.id}
@@ -989,6 +1065,28 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
                           <span className="font-black text-emerald-400 text-sm">
                             {formatCurrency(app.amount)}
                           </span>
+                        </div>
+
+                        {/* Gasto de combustível e sobra pós-combustível por app */}
+                        <div className="bg-zinc-950/70 rounded-lg p-2 border border-zinc-800/80 space-y-1 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 flex items-center gap-1">
+                              <Fuel className="w-3 h-3 text-amber-400" />
+                              Gasto Combustível:
+                            </span>
+                            <span className="font-bold text-rose-400">
+                              -{formatCurrency(appFuel.fuelCost)}
+                              <span className="text-zinc-500 font-normal text-[10px] ml-1">
+                                ({appFuel.litersConsumed.toFixed(1)} L)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400">Sobra pós-combustível:</span>
+                            <span className={`font-bold ${appNetAfterFuel >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {formatCurrency(appNetAfterFuel)}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] pt-1 border-t border-zinc-800/60 text-zinc-400">
@@ -1021,6 +1119,8 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
                 };
                 const pRatePerHour = entry.onlineHours > 0 ? entry.grossAmount / entry.onlineHours : 0;
                 const pRatePerKm = entry.kmDriven > 0 ? entry.grossAmount / entry.kmDriven : 0;
+                const entryFuel = calculateEstimatedFuelExpense(entry.kmDriven, profile);
+                const entryNetAfterFuel = entry.grossAmount - entryFuel.fuelCost;
 
                 return (
                   <div
@@ -1114,6 +1214,29 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
                       </div>
                     </div>
 
+                    {/* Fuel calculation for this trip */}
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 bg-zinc-900/50 px-2.5 py-1.5 rounded-lg border border-zinc-800/70 text-[11px]">
+                      <span className="text-zinc-400 flex items-center gap-1">
+                        <Fuel className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Combustível Estimado:</span>
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-rose-400">
+                          -{formatCurrency(entryFuel.fuelCost)}
+                          <span className="text-zinc-500 font-normal text-[10px] ml-1">
+                            ({entryFuel.litersConsumed.toFixed(1)} L)
+                          </span>
+                        </span>
+                        <span className="text-zinc-600">•</span>
+                        <span className="text-zinc-400">
+                          Sobra:{' '}
+                          <strong className={entryNetAfterFuel >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                            {formatCurrency(entryNetAfterFuel)}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+
                     {entry.notes && (
                       <p className="text-xs text-zinc-400 italic bg-zinc-900/40 px-2.5 py-1.5 rounded-lg">
                         "{entry.notes}"
@@ -1200,17 +1323,51 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredExpenses.map((exp) => (
-              <div
-                key={exp.id}
-                className={`bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 flex items-center justify-between gap-3 text-xs transition-opacity ${
-                  exp.includeInCalculations === false ? 'opacity-70' : ''
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-white uppercase tracking-wider text-[11px] flex items-center gap-1.5 flex-wrap">
-                    <span className="w-2 h-2 rounded-full bg-rose-400" />
-                    <span>{exp.category}</span>
+            {filteredExpenses.map((exp) => {
+              const isAutoRodagem = Boolean(
+                exp.autoGenerated ||
+                exp.category === 'combustivel_rodagem' ||
+                exp.notes?.includes('Combustível automático da rodagem') ||
+                exp.id?.startsWith('exp-auto-')
+              );
+              const isAbastecimento =
+                !isAutoRodagem &&
+                (exp.category === 'abastecimento' || exp.category === 'combustivel' || exp.category === 'combustível');
+              const isManutencao = exp.category === 'manutencao' || exp.category === 'manutenção';
+
+              const categoryDisplayName = isAutoRodagem
+                ? 'Combustível automático da rodagem'
+                : isAbastecimento
+                ? 'Abastecimento'
+                : isManutencao
+                ? 'Manutenção'
+                : exp.category;
+
+              const dotColor = isAutoRodagem
+                ? 'bg-sky-400'
+                : isAbastecimento
+                ? 'bg-amber-400'
+                : isManutencao
+                ? 'bg-orange-400'
+                : 'bg-rose-400';
+
+              return (
+                <div
+                  key={exp.id}
+                  className={`bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 flex items-center justify-between gap-3 text-xs transition-opacity ${
+                    exp.includeInCalculations === false ? 'opacity-70' : ''
+                  }`}
+                >
+                  <div>
+                    <div className="font-bold text-white uppercase tracking-wider text-[11px] flex items-center gap-1.5 flex-wrap">
+                      <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                      <span>{categoryDisplayName}</span>
+                      {isAutoRodagem && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30 font-semibold inline-flex items-center gap-1">
+                          <Fuel className="w-2.5 h-2.5" />
+                          Auto (KM)
+                        </span>
+                      )}
                     {exp.includeInCalculations === false ? (
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                         Fora dos cálculos
@@ -1284,8 +1441,8 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

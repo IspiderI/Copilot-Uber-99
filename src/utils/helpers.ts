@@ -430,3 +430,41 @@ export const calculatePlatformFilteredData = (
     ticketAverage,
   };
 };
+
+export interface FuelConsumptionEstimate {
+  kmDriven: number;
+  kmPerLiter: number;
+  fuelPricePerLiter: number;
+  fuelType: string;
+  litersConsumed: number;
+  fuelCost: number;
+  fuelCostPerKm: number;
+}
+
+/**
+ * Calcula o consumo e gasto de combustível baseado nos KM rodados e nas configurações do veículo (km/L e R$/L)
+ */
+export const calculateEstimatedFuelExpense = (
+  kmDriven: number,
+  profile: DriverProfile
+): FuelConsumptionEstimate => {
+  const km = Math.max(0, kmDriven || 0);
+  const kmPerLiter = profile.kmPerLiter && profile.kmPerLiter > 0 ? profile.kmPerLiter : 10;
+  const fuelPricePerLiter =
+    profile.fuelPricePerLiter && profile.fuelPricePerLiter > 0 ? profile.fuelPricePerLiter : 3.89;
+  const fuelType = profile.fuelType || 'combustível';
+
+  const litersConsumed = km > 0 ? Number((km / kmPerLiter).toFixed(2)) : 0;
+  const fuelCost = Number((litersConsumed * fuelPricePerLiter).toFixed(2));
+  const fuelCostPerKm = kmPerLiter > 0 ? Number((fuelPricePerLiter / kmPerLiter).toFixed(3)) : 0;
+
+  return {
+    kmDriven: km,
+    kmPerLiter,
+    fuelPricePerLiter,
+    fuelType,
+    litersConsumed,
+    fuelCost,
+    fuelCostPerKm,
+  };
+};

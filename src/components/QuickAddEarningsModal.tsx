@@ -16,13 +16,23 @@ import {
 } from 'lucide-react';
 import { PlatformId, ShiftType, EarningsEntry, ExpenseEntry, DriverProfile, PlatformConfig } from '../types';
 import { PLATFORMS, getRelativeDate } from '../data/constants';
-import { formatCurrency, formatBRLDecimal, parseBRLDecimal, formatDateBR } from '../utils/helpers';
+import {
+  formatCurrency,
+  formatBRLDecimal,
+  parseBRLDecimal,
+  formatDateBR,
+  calculateEstimatedFuelExpense,
+} from '../utils/helpers';
 import { CurrencyInput } from './CurrencyInput';
 
 interface QuickAddEarningsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (entry: Omit<EarningsEntry, 'id' | 'createdAt'>, editId?: string) => void;
+  onSave: (
+    entry: Omit<EarningsEntry, 'id' | 'createdAt'>,
+    editId?: string,
+    autoGenerateFuel?: boolean
+  ) => void;
   initialEntry?: EarningsEntry | null;
   selectedDate: string;
   profile: DriverProfile;
@@ -87,6 +97,7 @@ export const QuickAddEarningsModal: React.FC<QuickAddEarningsModalProps> = ({
   const [includeInCalculations, setIncludeInCalculations] = useState<boolean>(
     () => initialEntry?.includeInCalculations !== false
   );
+  const [autoGenerateFuelExpense, setAutoGenerateFuelExpense] = useState<boolean>(true);
 
   // Synchronize state when modal is opened or when switching between new and edit
   useEffect(() => {
@@ -105,6 +116,12 @@ export const QuickAddEarningsModal: React.FC<QuickAddEarningsModalProps> = ({
       setShift(initialEntry.shift);
       setNotes(initialEntry.notes || '');
       setIncludeInCalculations(initialEntry.includeInCalculations !== false);
+
+      // Se editando, checar se tem despesa automática vinculada
+      const hasLinkedExpense = expenses.some(
+        (e) => e.linkedEarningsId === initialEntry.id || e.id === `exp-auto-${initialEntry.id}`
+      );
+      setAutoGenerateFuelExpense(hasLinkedExpense || initialEntry.kmDriven > 0);
     } else {
       setDate(selectedDate || getRelativeDate(0));
       setPlatformId(platforms[0]?.id || 'uber');
@@ -118,8 +135,9 @@ export const QuickAddEarningsModal: React.FC<QuickAddEarningsModalProps> = ({
       setNotes('');
       setShift('manha');
       setIncludeInCalculations(true);
+      setAutoGenerateFuelExpense(true);
     }
-  }, [initialEntry, selectedDate, isOpen]);
+  }, [initialEntry, selectedDate, isOpen, expenses]);
 
   if (!isOpen) return null;
 
@@ -177,6 +195,44 @@ export const QuickAddEarningsModal: React.FC<QuickAddEarningsModalProps> = ({
       ? Number((totalCycleKmWithCurrent / latestFuelLiters).toFixed(2))
       : 0;
 
+  // 1. Custo de combustível desta viagem individual baseado no km/L das configurações
+  const tripFuelEstimate = calculateEstimatedFuelExpense(numKm, profile);
+
+  // 2. Total de KM acumulados e combustível do dia selecionado
+  const priorDayKm = useMemo(() => {
+    if (!earnings || earnings.length === 0) return 0;
+    return earnings
+      .filter(
+        (e) =>
+          e.date === date &&
+          e.includeInCalculations !== false &&
+          (!initialEntry || e.id !== initialEntry.id)
+      )
+      .reduce((sum, e) => sum + (e.kmDriven || 0), 0);
+  }, [earnings, date, initialEntry]);
+
+  const totalDayKm = priorDayKm + numKm;
+  const dayFuelEstimate = calculateEstimatedFuelExpense(totalDayKm, profile);
+
+  // 3. Total de KM acumulados e combustível deste aplicativo no dia selecionado
+  const priorAppDayKm = useMemo(() => {
+    if (!earnings || earnings.length === 0) return 0;
+    return earnings
+      .filter(
+        (e) =>
+          e.date === date &&
+          e.platformId === platformId &&
+          e.includeInCalculations !== false &&
+          (!initialEntry || e.id !== initialEntry.id)
+      )
+      .reduce((sum, e) => sum + (e.kmDriven || 0), 0);
+  }, [earnings, date, platformId, initialEntry]);
+
+  const totalAppDayKm = priorAppDayKm + numKm;
+  const appFuelEstimate = calculateEstimatedFuelExpense(totalAppDayKm, profile);
+
+  const selectedPlatform = platforms.find((p) => p.id === platformId) || platforms[0];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (numGross <= 0) return;
@@ -194,7 +250,8 @@ export const QuickAddEarningsModal: React.FC<QuickAddEarningsModalProps> = ({
         notes: notes.trim() || undefined,
         includeInCalculations,
       },
-      initialEntry ? initialEntry.id : undefined
+      initialEntry ? initialEntry.id : undefined,
+      autoGenerateFuelExpense
     );
     onClose();
   };
@@ -461,26 +518,109 @@ export const QuickAddEarningsModal: React.FC<QuickAddEarningsModalProps> = ({
             </div>
           </div>
 
-          {/* Real-time Fuel Telemetry Insight */}
-          {latestFuel && (
-            <div className="bg-amber-950/20 border border-amber-500/20 rounded-xl p-3 text-xs space-y-1">
-              <div className="flex items-center justify-between text-amber-400 font-bold flex-wrap gap-1">
-                <span className="flex items-center gap-1.5">
-                  <Fuel className="w-3.5 h-3.5" />
-                  <span>Consumo no Ciclo do Último Abastecimento</span>
+          {/* Real-time Fuel Telemetry Insight (Gasto por Viagem, por App e Total do Dia) */}
+          <div className="bg-amber-950/25 border border-amber-500/30 rounded-xl p-3.5 text-xs space-y-2.5">
+            <div className="flex items-center justify-between text-amber-400 font-bold flex-wrap gap-1">
+              <span className="flex items-center gap-1.5">
+                <Fuel className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Gasto de Combustível da Viagem & Acumulado</span>
+              </span>
+              <span className="text-[10px] text-zinc-400 bg-zinc-900/80 px-2 py-0.5 rounded border border-zinc-800">
+                Veículo: {profile.kmPerLiter || 10} km/L • {formatCurrency(profile.fuelPricePerLiter || 3.89)}/L ({profile.fuelType || 'combustível'})
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* 1. Desta Viagem */}
+              <div className="bg-zinc-950/80 p-2.5 rounded-lg border border-amber-500/30">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold">
+                  1. Desta Viagem ({numKm} km)
+                </div>
+                <div className="text-sm font-black text-amber-400 mt-0.5">
+                  {numKm > 0 ? formatCurrency(tripFuelEstimate.fuelCost) : 'R$ 0,00'}
+                </div>
+                <div className="text-[10px] text-zinc-500">
+                  {numKm > 0 ? `${tripFuelEstimate.litersConsumed.toFixed(2)} L consumidos` : 'Informe os km'}
+                </div>
+              </div>
+
+              {/* 2. No Aplicativo Selecionado */}
+              <div className="bg-zinc-950/80 p-2.5 rounded-lg border border-zinc-800">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold truncate">
+                  2. No {selectedPlatform.name} ({totalAppDayKm} km)
+                </div>
+                <div className="text-sm font-black text-white mt-0.5">
+                  {totalAppDayKm > 0 ? formatCurrency(appFuelEstimate.fuelCost) : 'R$ 0,00'}
+                </div>
+                <div className="text-[10px] text-zinc-500">
+                  {totalAppDayKm > 0 ? `${appFuelEstimate.litersConsumed.toFixed(1)} L no app hoje` : 'Primeira do app'}
+                </div>
+              </div>
+
+              {/* 3. Total Acumulado do Dia */}
+              <div className="bg-zinc-950/80 p-2.5 rounded-lg border border-emerald-500/30">
+                <div className="text-[10px] text-emerald-400 uppercase font-semibold">
+                  3. Total do Dia ({totalDayKm} km)
+                </div>
+                <div className="text-sm font-black text-emerald-400 mt-0.5">
+                  {totalDayKm > 0 ? formatCurrency(dayFuelEstimate.fuelCost) : 'R$ 0,00'}
+                </div>
+                <div className="text-[10px] text-zinc-400">
+                  {totalDayKm > 0 ? `${dayFuelEstimate.litersConsumed.toFixed(1)} L em ${totalDayKm} km` : '0 km hoje'}
+                </div>
+              </div>
+            </div>
+
+            {latestFuel && (
+              <div className="pt-2 border-t border-amber-500/20 flex flex-wrap items-center justify-between text-[11px] text-zinc-400 gap-1">
+                <span>
+                  Último abastecimento: <strong className="text-zinc-200">{formatDateBR(latestFuel.date)}</strong> ({latestFuelLiters.toFixed(1)} L)
                 </span>
-                <span className="text-[10px] text-zinc-400 font-normal">
-                  Abastecido em {formatDateBR(latestFuel.date)} ({latestFuelLiters.toFixed(1)} L)
+                <span>
+                  Ciclo acumulado:{' '}
+                  <strong className="text-amber-300">{totalCycleKmWithCurrent} km</strong> (
+                  <strong className="text-emerald-400 font-bold">
+                    {estimatedCycleKmL > 0 ? `${estimatedCycleKmL} km/L` : '--'}
+                  </strong>)
                 </span>
               </div>
-              <p className="text-zinc-300 text-[11px] leading-relaxed">
-                Com este lançamento ({numKm > 0 ? `+${numKm} km` : '0 km'}), o ciclo totaliza{' '}
-                <strong className="text-white">{totalCycleKmWithCurrent} km rodados</strong> ÷{' '}
-                {latestFuelLiters.toFixed(1)} L ={' '}
-                <strong className="text-emerald-400 font-bold">
-                  {estimatedCycleKmL > 0 ? `${estimatedCycleKmL} km/L acumulado` : 'Aguardando km'}
-                </strong>.
-              </p>
+            )}
+          </div>
+
+          {/* Opção para Contabilizar em Despesas Automaticamente */}
+          {numKm > 0 && (
+            <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950/20 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 border border-amber-500/30">
+                  <Fuel className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-2 flex-wrap">
+                    <span>Contabilizar em Despesas Automaticamente</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                      +{formatCurrency(tripFuelEstimate.fuelCost)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Lança {tripFuelEstimate.litersConsumed.toFixed(1)} L nas despesas do dia {formatDateBR(date)} para abater do lucro líquido real.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAutoGenerateFuelExpense(!autoGenerateFuelExpense)}
+                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 border ${
+                  autoGenerateFuelExpense ? 'bg-emerald-500 border-emerald-400' : 'bg-zinc-800 border-zinc-700'
+                }`}
+                aria-label="Contabilizar em despesas"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 bg-white w-4.5 h-4.5 rounded-full transition-transform shadow-md ${
+                    autoGenerateFuelExpense ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
           )}
 

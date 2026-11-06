@@ -272,7 +272,8 @@ export const DEFAULT_PROFILE: DriverProfile = {
 };
 
 export const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategoryConfig[] = [
-  { id: 'combustivel', name: 'Combustível', iconName: 'Fuel', color: 'text-amber-400', isDefault: true },
+  { id: 'abastecimento', name: 'Abastecimento', iconName: 'Fuel', color: 'text-amber-400', isDefault: true },
+  { id: 'combustivel_rodagem', name: 'Combustível automático da rodagem', iconName: 'Fuel', color: 'text-sky-400', isDefault: true },
   { id: 'alimentacao', name: 'Alimentação', iconName: 'Utensils', color: 'text-rose-400', isDefault: true },
   { id: 'lavagem', name: 'Lavagem', iconName: 'Sparkles', color: 'text-sky-400', isDefault: true },
   { id: 'manutencao', name: 'Manutenção', iconName: 'Wrench', color: 'text-orange-400', isDefault: true },
@@ -299,6 +300,55 @@ export const getRelativeDate = (offsetDays: number = 0): string => {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+// Retorna intervalo exato do mês passado (dia 1 ao último dia)
+export const getLastMonthRange = (): { start: string; end: string; label: string } => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed: 0 = Jan, 9 = Out
+  const prevDate = new Date(year, month - 1, 1);
+  const prevYear = prevDate.getFullYear();
+  const prevMonth = prevDate.getMonth();
+  const lastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
+  const monthStr = String(prevMonth + 1).padStart(2, '0');
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  return {
+    start: `${prevYear}-${monthStr}-01`,
+    end: `${prevYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`,
+    label: `${monthNames[prevMonth]} de ${prevYear}`,
+  };
+};
+
+// Retorna intervalo do mês atual (dia 1 até hoje ou fim do mês)
+export const getCurrentMonthRange = (): { start: string; end: string; label: string } => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const monthStr = String(month + 1).padStart(2, '0');
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  return {
+    start: `${year}-${monthStr}-01`,
+    end: `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`,
+    label: `${monthNames[month]} de ${year}`,
+  };
+};
+
+// Retorna data formatada no mês anterior (ex: dia 5 do mês passado)
+export const getPreviousMonthDate = (dayOfMonth: number): string => {
+  const now = new Date();
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, dayOfMonth);
+  const y = prevDate.getFullYear();
+  const m = String(prevDate.getMonth() + 1).padStart(2, '0');
+  const d = String(dayOfMonth).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 };
 
 export const INITIAL_EARNINGS: EarningsEntry[] = [
@@ -450,15 +500,121 @@ export const INITIAL_EARNINGS: EarningsEntry[] = [
     notes: 'Plantão tarde',
     createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
   },
+  // Corridas do Mês Passado (Setembro) para relatórios e filtros mensais
+  {
+    id: 'earn-m1',
+    date: getPreviousMonthDate(5),
+    platformId: 'uber',
+    grossAmount: 310.0,
+    ridesCount: 14,
+    onlineHours: 7.0,
+    kmDriven: 130,
+    tipsOrBonus: 20.0,
+    shift: 'integral',
+    notes: 'Sexta-feira cheia mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 5, 18, 0, 0).toISOString(),
+  },
+  {
+    id: 'earn-m2',
+    date: getPreviousMonthDate(6),
+    platformId: '99',
+    grossAmount: 245.0,
+    ridesCount: 10,
+    onlineHours: 5.5,
+    kmDriven: 105,
+    tipsOrBonus: 10.0,
+    shift: 'tarde',
+    notes: 'Sábado à tarde 99Pop',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 6, 20, 0, 0).toISOString(),
+  },
+  {
+    id: 'earn-m3',
+    date: getPreviousMonthDate(12),
+    platformId: 'uber',
+    grossAmount: 350.0,
+    ridesCount: 15,
+    onlineHours: 8.0,
+    kmDriven: 145,
+    tipsOrBonus: 25.0,
+    shift: 'integral',
+    notes: 'Plantão completo',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 12, 19, 0, 0).toISOString(),
+  },
+  {
+    id: 'earn-m4',
+    date: getPreviousMonthDate(13),
+    platformId: 'indrive',
+    grossAmount: 260.0,
+    ridesCount: 9,
+    onlineHours: 5.0,
+    kmDriven: 110,
+    tipsOrBonus: 15.0,
+    shift: 'tarde',
+    notes: 'Corridas aeroporto',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 13, 21, 0, 0).toISOString(),
+  },
+  {
+    id: 'earn-m5',
+    date: getPreviousMonthDate(19),
+    platformId: 'uber',
+    grossAmount: 335.0,
+    ridesCount: 14,
+    onlineHours: 7.5,
+    kmDriven: 140,
+    tipsOrBonus: 18.0,
+    shift: 'integral',
+    notes: 'Zona Norte e Centro',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 19, 18, 30, 0).toISOString(),
+  },
+  {
+    id: 'earn-m6',
+    date: getPreviousMonthDate(20),
+    platformId: 'mercadolivre',
+    grossAmount: 240.0,
+    ridesCount: 40,
+    onlineHours: 5.0,
+    kmDriven: 70,
+    tipsOrBonus: 10.0,
+    shift: 'manha',
+    notes: 'Envios Extra mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 20, 14, 0, 0).toISOString(),
+  },
+  {
+    id: 'earn-m7',
+    date: getPreviousMonthDate(26),
+    platformId: 'uber',
+    grossAmount: 365.0,
+    ridesCount: 16,
+    onlineHours: 8.0,
+    kmDriven: 155,
+    tipsOrBonus: 22.0,
+    shift: 'integral',
+    notes: 'Plantão fim de semana',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 26, 20, 0, 0).toISOString(),
+  },
+  {
+    id: 'earn-m8',
+    date: getPreviousMonthDate(27),
+    platformId: '99',
+    grossAmount: 285.0,
+    ridesCount: 12,
+    onlineHours: 6.0,
+    kmDriven: 120,
+    tipsOrBonus: 12.0,
+    shift: 'tarde',
+    notes: 'Corridas 99 mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 27, 21, 0, 0).toISOString(),
+  },
 ];
 
 export const INITIAL_EXPENSES: ExpenseEntry[] = [
   {
     id: 'exp-1',
     date: getRelativeDate(0),
-    category: 'combustivel',
+    category: 'abastecimento',
     amount: 110.0,
     liters: 28.27,
+    pricePerLiter: 3.89,
     fuelType: 'etanol',
     notes: 'Posto Shell - Tanque cheio Etanol R$ 3,89/L',
     createdAt: new Date().toISOString(),
@@ -482,9 +638,10 @@ export const INITIAL_EXPENSES: ExpenseEntry[] = [
   {
     id: 'exp-4',
     date: getRelativeDate(2),
-    category: 'combustivel',
+    category: 'abastecimento',
     amount: 95.0,
     liters: 24.4,
+    pricePerLiter: 3.89,
     fuelType: 'etanol',
     notes: 'Abastecimento diário',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
@@ -504,6 +661,62 @@ export const INITIAL_EXPENSES: ExpenseEntry[] = [
     amount: 80.0,
     notes: 'Troca de palhetas do limpador e alinhamento',
     createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+  },
+  {
+    id: 'exp-7',
+    date: getRelativeDate(5),
+    category: 'abastecimento',
+    amount: 105.0,
+    liters: 27.0,
+    pricePerLiter: 3.89,
+    fuelType: 'etanol',
+    notes: 'Tanque cheio início da semana',
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+  },
+  // Abastecimentos do Mês Passado (Setembro) para cálculo exato mensal do dia 1 ao 30
+  {
+    id: 'exp-m1',
+    date: getPreviousMonthDate(5),
+    category: 'abastecimento',
+    amount: 126.43,
+    liters: 32.5,
+    pricePerLiter: 3.89,
+    fuelType: 'etanol',
+    notes: 'Posto Shell - 1º Abastecimento do mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 5, 8, 30, 0).toISOString(),
+  },
+  {
+    id: 'exp-m2',
+    date: getPreviousMonthDate(12),
+    category: 'abastecimento',
+    amount: 116.70,
+    liters: 30.0,
+    pricePerLiter: 3.89,
+    fuelType: 'etanol',
+    notes: 'Posto Ipiranga - 2º Abastecimento do mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 12, 8, 0, 0).toISOString(),
+  },
+  {
+    id: 'exp-m3',
+    date: getPreviousMonthDate(19),
+    category: 'abastecimento',
+    amount: 129.15,
+    liters: 33.2,
+    pricePerLiter: 3.89,
+    fuelType: 'etanol',
+    notes: 'Posto BR Petrobras - 3º Abastecimento do mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 19, 9, 0, 0).toISOString(),
+  },
+  {
+    id: 'exp-m4',
+    date: getPreviousMonthDate(26),
+    category: 'abastecimento',
+    amount: 123.70,
+    liters: 31.8,
+    pricePerLiter: 3.89,
+    fuelType: 'etanol',
+    notes: 'Posto Shell - 4º Abastecimento do mês passado',
+    createdAt: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 26, 8, 15, 0).toISOString(),
   },
 ];
 

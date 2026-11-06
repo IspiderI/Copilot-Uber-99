@@ -32,7 +32,7 @@ interface ManageExpenseCategoriesModalProps {
 }
 
 const AVAILABLE_ICONS: Array<{ name: string; label: string; icon: React.ReactNode }> = [
-  { name: 'Fuel', label: 'Combustível', icon: <Fuel className="w-4 h-4" /> },
+  { name: 'Fuel', label: 'Abastecimento', icon: <Fuel className="w-4 h-4" /> },
   { name: 'Utensils', label: 'Alimentação', icon: <Utensils className="w-4 h-4" /> },
   { name: 'Sparkles', label: 'Lavagem', icon: <Sparkles className="w-4 h-4" /> },
   { name: 'Wrench', label: 'Manutenção', icon: <Wrench className="w-4 h-4" /> },

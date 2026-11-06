@@ -65,7 +65,7 @@ export const QuickAddExpenseModal: React.FC<QuickAddExpenseModalProps> = ({
   };
 
   const [date, setDate] = useState<string>(() => initialExpense?.date || selectedDate || getRelativeDate(0));
-  const [category, setCategory] = useState<string>(() => initialExpense?.category || 'combustivel');
+  const [category, setCategory] = useState<string>(() => initialExpense?.category || 'abastecimento');
   const [platformId, setPlatformId] = useState<string>(() => initialExpense?.platformId || 'all');
   const [amount, setAmount] = useState<string>(() =>
     initialExpense ? formatBRLDecimal(initialExpense.amount, 2) : ''
@@ -114,7 +114,7 @@ export const QuickAddExpenseModal: React.FC<QuickAddExpenseModalProps> = ({
       setIncludeInCalculations(initialExpense.includeInCalculations !== false);
     } else {
       setDate(selectedDate || getRelativeDate(0));
-      setCategory('combustivel');
+      setCategory('abastecimento');
       setPlatformId('all');
       setAmount('');
       setNotes('');
@@ -149,11 +149,13 @@ export const QuickAddExpenseModal: React.FC<QuickAddExpenseModalProps> = ({
     }
   };
 
+  const isFuelCategory = category === 'abastecimento' || category === 'combustivel';
+
   // Bidirectional calculations:
   // 1. When total amount changes
   const handleAmountChange = (val: string, parsedNum?: number) => {
     setAmount(val);
-    if (category === 'combustivel') {
+    if (isFuelCategory) {
       const numTotal = parsedNum !== undefined ? parsedNum : parseBRLDecimal(val);
       const numPrice = parseBRLDecimal(pricePerLiter);
       if (numTotal > 0 && numPrice > 0) {
@@ -189,8 +191,8 @@ export const QuickAddExpenseModal: React.FC<QuickAddExpenseModalProps> = ({
     const numAmount = parseBRLDecimal(amount);
     if (!numAmount || numAmount <= 0) return;
 
-    const numLiters = category === 'combustivel' && liters ? parseFloat(liters) : undefined;
-    const numPricePerLiter = category === 'combustivel' && pricePerLiter ? parseBRLDecimal(pricePerLiter) : undefined;
+    const numLiters = isFuelCategory && liters ? parseFloat(liters) : undefined;
+    const numPricePerLiter = isFuelCategory && pricePerLiter ? parseBRLDecimal(pricePerLiter) : undefined;
 
     onSave(
       {
@@ -200,7 +202,7 @@ export const QuickAddExpenseModal: React.FC<QuickAddExpenseModalProps> = ({
         notes: notes.trim() || undefined,
         liters: numLiters,
         pricePerLiter: numPricePerLiter,
-        fuelType: category === 'combustivel' ? fuelType : undefined,
+        fuelType: isFuelCategory ? fuelType : undefined,
         includeInCalculations,
         platformId: platformId === 'all' ? undefined : platformId,
       },
@@ -409,7 +411,7 @@ export const QuickAddExpenseModal: React.FC<QuickAddExpenseModalProps> = ({
           </div>
 
           {/* Special interactive section for FUEL */}
-          {category === 'combustivel' && (
+          {isFuelCategory && (
             <div className="bg-gradient-to-br from-amber-500/10 via-zinc-950 to-zinc-950 p-3.5 rounded-xl border border-amber-500/30 space-y-3">
               {/* Header with Explanation Button */}
               <div className="flex items-center justify-between">
