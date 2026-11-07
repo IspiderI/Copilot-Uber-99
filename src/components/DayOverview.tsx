@@ -1389,8 +1389,6 @@ export const DayOverview: React.FC<DayOverviewProps> = ({
                     </div>
                   )}
                 </div>
-
-                <div className="flex items-center gap-2">
                   <span
                     className={`font-black text-sm ${
                       exp.includeInCalculations !== false
