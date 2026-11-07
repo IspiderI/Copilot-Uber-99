@@ -1173,7 +1173,7 @@ export const VehicleSettingsModal: React.FC<VehicleSettingsModalProps> = ({
           onClose();
         }}
         title="Redefinir todos os dados?"
-        description="Esta ação irá restaurar os dados de fábrica do Rosida - Motorista. Todos os faturamentos e despesas inseridos serão apagados. Deseja continuar?"
+        description="Esta ação irá restaurar os dados de fábrica do DriversPro. Todos os faturamentos e despesas inseridos serão apagados. Deseja continuar?"
         confirmLabel="Sim, Restaurar Dados"
         isDanger={true}
       />

@@ -36,10 +36,10 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white">
-                  Rosida
+                  DriversPro
                 </span>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Motorista
+                  Pro
                 </span>
               </div>
               <p className="text-xs text-zinc-400 hidden sm:block">Gestão de Ganhos & Veículo</p>

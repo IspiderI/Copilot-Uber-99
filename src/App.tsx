@@ -160,6 +160,44 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Auto-load imported backup from CSVs on first start if not already loaded
+  useEffect(() => {
+    const isLoaded = localStorage.getItem('driverspro_imported_backup_loaded');
+    if (!isLoaded) {
+      fetch('/assets/aistudio/imported_backup.json')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            if (data.earnings && Array.isArray(data.earnings) && data.earnings.length > 0) {
+              setEarnings(data.earnings);
+              localStorage.setItem('rosida_earnings', JSON.stringify(data.earnings));
+            }
+            if (data.expenses && Array.isArray(data.expenses) && data.expenses.length > 0) {
+              setExpenses(data.expenses);
+              localStorage.setItem('rosida_expenses', JSON.stringify(data.expenses));
+            }
+            if (data.profile) {
+              setProfile(data.profile);
+              localStorage.setItem('rosida_profile', JSON.stringify(data.profile));
+            }
+            if (data.platforms) {
+              setPlatforms(data.platforms);
+              localStorage.setItem('rosida_platforms', JSON.stringify(data.platforms));
+            }
+            if (data.expenseCategories) {
+              setExpenseCategories(data.expenseCategories);
+              localStorage.setItem('rosida_expense_categories', JSON.stringify(data.expenseCategories));
+            }
+            localStorage.setItem('driverspro_imported_backup_loaded', 'true');
+            showToast('Backup de receitas, jornadas e despesas importado com sucesso!');
+          }
+        })
+        .catch((err) => {
+          console.log('Could not auto-load imported backup:', err);
+        });
+    }
+  }, []);
+
   // Auto-migration: if entries were saved with premature UTC next-day date, realign them to today
   useEffect(() => {
     const todayStr = getRelativeDate(0);
@@ -621,7 +659,7 @@ export default function App() {
   const handleExportData = (currentFormProfile?: DriverProfile) => {
     const exportProfile = currentFormProfile ? { ...profile, ...currentFormProfile } : profile;
     const fullBackup = {
-      appName: 'Rosida - Gestão Financeira para Motoristas e Entregadores',
+      appName: 'DriversPro - Gestão Financeira para Motoristas e Entregadores',
       version: '2.2.0',
       exportedAt: new Date().toISOString(),
       metadata: {
@@ -1118,7 +1156,7 @@ export default function App() {
       <footer className="border-t border-zinc-900 bg-zinc-950 py-6 mt-12 text-center text-xs text-zinc-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>
-            <strong className="text-zinc-400">Rosida - Motorista</strong> • Gestão Financeira e Operacional para Motoristas
+            <strong className="text-zinc-400">DriversPro</strong> • Gestão Financeira e Operacional para Motoristas
           </p>
           <p className="text-[11px] text-zinc-600">
             Controle de ganhos, despesas, veículo e metas mensais

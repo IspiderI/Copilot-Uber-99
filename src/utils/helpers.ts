@@ -226,7 +226,7 @@ export const generateWhatsAppReport = (
     }
   });
 
-  text += `\n_Gerado pelo Rosida - Motorista_ 🚀`;
+  text += `\n_Gerado pelo DriversPro_ 🚀`;
   return text;
 };
 

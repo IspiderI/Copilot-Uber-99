@@ -401,7 +401,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
         msg += `• ${c.name}: ${formatCurrency(c.val)}\n`;
       });
     }
-    msg += `\n_Rosida Driver - Controle Financeiro_`;
+    msg += `\n_DriversPro - Controle Financeiro_`;
 
     navigator.clipboard.writeText(msg);
     setCopied(true);
